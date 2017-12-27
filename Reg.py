@@ -10,13 +10,26 @@ import pandas as pd
 import DesignMatrix
 import numpy as np
 import scipy.stats as ss
-
-#import logLike
+# import logLike
 
 
 class Reg:
+    """
+    Perform regression from an R-style formula and a pandas DataFrame.
+
+    Use a DesignMatrix class object to compute the design matrix.
+
+    Currently only "+" is allowed on the RHS of the formula.  Integer columns
+    are converted to float, and 'str' columns are interpreted as factors.
+    Calls to the methods of the DesignMatrix object allow variations in
+    cleanup of the text in the factors ('str' columns).
+
+    Future versions of DesignMatrix may incorporate support for more complex
+    formulas.
+    """
+
     def __init__(self, formula, data):
-        # Check and store inputs
+        """ Check and store inputs"""
         if not isinstance(formula, str):
             raise(TypeError("'formula' must be a 'str'"))
         self.formula = formula.replace(" ", "")
@@ -25,7 +38,12 @@ class Reg:
         self.data = data
         self.nrow = len(data)
         self.ncol = data.shape[1]
-        self.DesignMatrix = DesignMatrix.DesignMatrix(self)
+        self.DesignMat = DesignMatrix.DesignMat(self.formula,
+                                                self.data)
+
+        # get DV and IVs
+        self.DV = self.DesignMat.DV
+        self.IVs = self.DesignMat.IVs
 
         # Initialize options for string to factor handling
         self.strip = True
@@ -33,100 +51,35 @@ class Reg:
         self.tolower = True
         self.custom_baselines = {}
 
-        # get DV and IVs
-        self.extract_DV()
-        self.extract_IVs()
-
-    # Formal, unambiguous class represention:
     def __repr__(self):
+        """ Formal, unambiguous class represention """
         return("Reg(formula:" + self.formula + ", size: " +
                str(len(self.data)) + " rows and " +
                str(self.data.shape[1]) + " columns)")
 
-    # Informal "pretty" class represention:
     def __str__(self):
+        """ Informal "pretty" class represention """
         return("Reg object:\nFormula: " + self.formula + "\nSize: " +
                str(len(self.data)) + " rows and " + str(self.data.shape[1]) +
                " columns)")
 
-    def extract_DV(self):
-        """ Get DV from 'formula' and put in self.DV """
-        tilde = self.formula.find("~")
-        if tilde == -1:
-            raise(Exception("No tilde in formula"))
-        self.DV = self.formula[:tilde]
-        if self.DV not in self.data.columns:
-            raise(Exception("DV from 'formula' not in 'data'"))
-
-    def extract_IVs(self):
-        """ Get IVs from 'formula' and put in self.IVs """
-        tilde = self.formula.find("~")
-        if tilde == -1:
-            raise(Exception("No tilde in formula"))
-        RHS = self.formula[tilde + 1:]
-        IVs = [x.strip() for x in RHS.split('+')]
-        for iv in IVs:
-            if iv not in self.data.columns:
-                raise(Exception(iv + " from 'formula' not in 'data'"))
-        self.IVs = IVs
-
-    def set_baselines(self, replacementBaselineDictionary):
-        """
-        Explictly set the dictionary of baselines (other than the
-        alphabetically first) for categorical variables
-        """
-        for key in replacementBaselineDictionary.keys():
-            if not isinstance(key, str):
-                raise(Exception("keys must be 'str' objects"))
-            if key not in self.IVs:
-                raise(Exception(key + " is not one of the IVs"))
-            value = replacementBaselineDictionary[key]
-            if not isinstance(value, str):
-                raise(Exception("values must be 'str' objects"))
-            if value not in self.data[key]:
-                raise(Exception(value + " is not in '" + key + "'"))
-        self.custom_baselines = replacementBaselineDictionary
-
-    def set_one_baseline(self, var, value):
-        """ set or replace a single baseline for a factor """
-        if not isinstance(var, str):
-            raise(Exception("'var' must be a 'str' object"))
-        if var not in self.IVs:
-            raise(Exception(var + " is not one of the IVs"))
-        if not isinstance(value, str):
-            raise(Exception("'value' must be a 'str' object"))
-        if value not in self.data[var]:
-            raise(Exception(value + " is not in '" + var + "'"))
-        self.custom_baseline[var] = value
-
-    def set_strip(self, value):
-        if not isinstance(value, bool):
-            raise(TypeError("'value' must be a 'bool' object"))
-        self.strip = value
-
-    def set_tolower(self, value):
-        if not isinstance(value, bool):
-            raise(TypeError("'value' must be a 'bool' object"))
-        self.tolower = value
-
-    def set_toupper(self, value):
-        if not isinstance(value, bool):
-            raise(TypeError("'value' must be a 'bool' object"))
-        self.toupper = value
-
     def make_X(self):
-        self.DesignMatrix.make_X()
-        self.X = self.DesignMatrix.X
+        """ Based on current settings of DesignMatrix, compute 'X' """
+        self.DesignMat.make_X()
+        self.X = self.DesignMat.X
         self.p = self.X.shape[1]
 
     def fit(self):
+        """ Fit the model from 'X' and the DV.  Store results in  'bhat' and
+            other variables.
+        """
         self.make_X()
         vcov_unadj = np.linalg.inv(self.X.T @ self.X)
         bhat = vcov_unadj @ self.X.T @ self.data[self.DV].values
         bnames = ['Intercept']
         for iv in self.IVs:
-            if iv in self.DesignMatrix.levels:
-                levels = self.DesignMatrix.levels[iv]
+            if iv in self.DesignMat.levels:
+                levels = self.DesignMat.levels[iv]
                 bnames = bnames + [iv + "." + L for L in levels]
             else:
                 bnames = bnames + [iv]
@@ -161,8 +114,8 @@ if __name__ == "__main__":
     print(r.data)
     print(r)
     repr(r)
+    print("")
     r.fit()
     print(r.bhat)
-    print(r.DesignMatrix.baselines)
-    print(r.DesignMatrix.levels)
-
+    print("")
+    r.DesignMat.show_factor_info()
