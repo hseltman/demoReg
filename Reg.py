@@ -50,6 +50,7 @@ class Reg:
         self.toupper = True
         self.tolower = True
         self.custom_baselines = {}
+        self.X = None
 
     def __repr__(self):
         """ Formal, unambiguous class represention """
