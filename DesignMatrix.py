@@ -29,7 +29,7 @@ class DesignMat():
     """
 
     def __init__(self, formula, data):
-        self.formula = formula
+        self.formula = formula.replace(" ", "")
         self.data = data
         self.nrow, self.ncol = self.data.shape
         self.extract_DV()
@@ -65,7 +65,7 @@ class DesignMat():
         IVs = [x.strip() for x in RHS.split('+')]
         for iv in IVs:
             if iv not in self.data.columns:
-                raise(Exception(iv + " from 'formula' not in 'data'"))
+                raise(Exception("'" + iv + "' from 'formula' not in 'data'"))
         self.IVs = IVs
 
     def reset_baselines(self):
@@ -185,7 +185,7 @@ if __name__ == "__main__":
                         'y': (12.5, 6.9, 15.2, 13, 15, 17.7, 21.2),
                         'tx': ('p', 'p', 'a', 'a', 'b', 'b', 'b')})
 
-    d = DesignMat("y~age+gender+tx", dat)
+    d = DesignMat("y ~ age + gender + tx", dat)
     d.make_X()
     print(d.X)
     d.show_factor_info()
