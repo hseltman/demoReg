@@ -1,69 +1,46 @@
 # -*- coding: utf-8 -*-
 """
-Unit testing of class Reg
+Test for Reg (py.test)
 @author: hseltman
 """
 
-
-import unittest
+import pytest
+from pytest import approx
 import pandas as pd
-import numpy as np
-# import io
-# import sys
 from Reg import Reg
+import numpy as np
 
 
-class RegTestCase(unittest.TestCase):
-    """Tests for `Reg.py`."""
+@pytest.fixture(scope="module")
+def simpleData():
+    """ simple data frame fixture """
+    dat = pd.DataFrame({'age': [25, 30, 35, 40],
+                        'male': ['m', 'M', 'f', 'F'],
+                        'score': [45, 52, 88, 51]})
+    return dat
 
-    def setUp(self):
-        self.dat = pd.DataFrame({'age': [25, 30, 35, 40],
-                                 'male': ['m', 'M', 'f', 'F'],
-                                 'score': [45, 52, 88, 51]})
 
-    def tearDown(self):
-        del self.dat
+def test_X_correct(simpleData):
+    """Is X is a correctly sized array?"""
+    r = Reg("score ~ age + male", simpleData)
+    r.make_X()
+    assert isinstance(r.X, np.ndarray)
+    assert r.X.shape == (4, 3)
 
-    def test_X_made_correctly(self):
-        """Is X is a correctly sized array?"""
-        r = Reg("score ~ age + male", self.dat)
-        r.make_X()
-        self.assertIsInstance(r.X, np.ndarray, msg='X not ndarray')
-        self.assertTrue(all([a == b for (a, b) in zip(r.X.shape, (4, 3))]),
-                        msg='X wrong size: {}'.format(r.X.shape))
 
-    def test_fit_correct(self):
-        """Does fit() generate correct output?"""
-        r = Reg("score ~ age + male", self.dat)
-        r.make_X()
-        r.fit()
-        self.assertIsInstance(r.bhat, pd.DataFrame,
-                              msg="Attribute 'bhat' is not a DataFrame")
-        self.assertTrue(r.bhat.shape == (3, 4),
-                        msg="Shape of 'bhat' is {}".format(r.bhat.shape))
-        self.assertTrue(all([a == b for (a, b) in
-                            zip(r.bhat.columns, ('estimate', 'se', 't',
-                                                 'p_value'))]),
-                        msg="Columns of 'bhat' are {}".format(r.bhat.columns))
-        self.assertTrue(all(round(r.bhat['estimate'], 1) ==
-                            (182.0, -3.0, -51.0)),
-                        msg="Estimates:\n{}".format(r.bhat['estimate']))
-        self.assertTrue(all(round(r.bhat['se'], 1) ==
-                            (165.7, 4.4, 49.2)),
-                        msg="Std. errors:\n{}".format(r.bhat['se']))
-        self.assertTrue(all(round(r.bhat['t'], 2) ==
-                            (1.10, -0.68, -1.04)),
-                        msg="t values:\n{}".format(r.bhat['t']))
-        self.assertTrue(all(round(r.bhat['p_value'], 2) ==
-                            (0.47, 0.62, 0.49)),
-                        msg="p values:\n{}".format(r.bhat['p_value']))
-        self.assertAlmostEqual(r.SSR, 484.0, msg="SSR = {}".format(r.SSR))
-        self.assertEqual(r.df, 1, msg="df = {}".format(r.df))
-        self.assertCountEqual(r.residual.round(2),
-                              (-11.0, 11.0, 11.0, -11.0),
-                              msg="residuals:\n{}".format(r.residual))
-        self.assertAlmostEqual(r.se_residual, 22.0,
-                               msg="se(res): {}".format(r.se_residual))
-
-if __name__ == '__main__':
-    unittest.main()
+def test_fit_correct(simpleData):
+    """Does fit() generate correct output?"""
+    r = Reg("score ~ age + male", simpleData)
+    r.make_X()
+    r.fit()
+    assert isinstance(r.bhat, pd.DataFrame)
+    assert r.bhat.shape == (3, 4)
+    assert all(r.bhat.columns.values == ('estimate', 'se', 't', 'p_value'))
+    assert all(round(r.bhat['estimate'], 1) == (182.0, -3.0, -51.0))
+    assert all(round(r.bhat['se'], 1) == (165.7, 4.4, 49.2))
+    assert all(round(r.bhat['t'], 2) == (1.10, -0.68, -1.04))
+    assert all(round(r.bhat['p_value'], 2) == (0.47, 0.62, 0.49))
+    assert r.SSR == approx(484.0)
+    assert r.df == 1
+    assert all(r.residual.round(2) == (-11.0, 11.0, 11.0, -11.0))
+    assert r.se_residual == approx(22.0)
