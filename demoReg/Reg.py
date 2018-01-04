@@ -7,7 +7,7 @@ Created on Wed Dec 20 09:13:51 2017
 """
 
 import pandas as pd
-import DesignMatrix
+from demoReg import DesignMatrix
 import numpy as np
 import scipy.stats as ss
 # import logLike

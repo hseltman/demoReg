@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Test for Reg (py.test)
+Unit testing of class Reg
 @author: hseltman
 """
 
 import pytest
 from pytest import approx
 import pandas as pd
-from Reg import Reg
+from demoReg.Reg import Reg
 import numpy as np
 
 

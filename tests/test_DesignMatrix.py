@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import io  # for StringIO
 import sys  # for stdout
-from DesignMatrix import DesignMat
+from demoReg.DesignMatrix import DesignMat
 
 
 @pytest.fixture(scope="module")
